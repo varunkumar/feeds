@@ -1,0 +1,19 @@
+{
+  "name": "arc-connect-server",
+  "version": "0.0.1",
+  "description": "Backend for arc-connect",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Varunkumar Nagarajan",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "async": "^2.0.1",
+    "express": "4.14.0",
+    "grpc": "^1.0.0-pre1",
+    "grpc-tools": "^1.0.0-pre1",
+    "pg": "6.0.3",
+    "socket.io": "1.4.8"
+  }
+}

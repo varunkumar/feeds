@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.arcesium.halo";
+option java_outer_classname = "MicroBlogProto";
+option objc_class_prefix = "MBP";
+
+package microblog;
+
+service MicroBlogPostService {
+  rpc GetFeeds (FeedFilter) returns (FeedResponse) {}
+  rpc GetFeedThread (FeedThreadRequest) returns (FeedThreadResponse) {}
+  rpc GetFeedStream (Empty) returns (stream FeedResponse) {}
+  rpc PostFeed (Feed) returns (FeedResponse) {}
+  rpc LikeFeed (FeedActionRequest) returns (FeedResponse) {}
+  rpc UnlikeFeed (FeedActionRequest) returns (FeedResponse) {}
+  rpc Follow (FriendshipRequest) returns (Empty) {}
+  rpc Unfollow (FriendshipRequest) returns (Empty) {}
+  rpc IsFollowing (FriendshipRequest) returns (FriendshipResponse) {}
+}
+
+message FeedFilter {
+  repeated string id = 1;
+  optional bool follower = 2;
+  optional bool owner = 3;
+  optional bool mention = 4;
+  optional bool hashtag = 5;
+  optional string tag = 6;
+  optional string userHandle = 7;
+  optional int32 pageSize = 8 [default = 10];
+  optional string pageToken = 9;
+  optional bool getReplies = 10;
+  repeated string ancestors = 11; 
+}
+
+message FeedResponse {
+  repeated FeedOut feed = 1;
+}
+
+message FeedOut {
+  required string id = 1;
+  required string content = 2;
+  required string userHandle = 3;
+  required string startTime = 4;
+  optional string endTime = 5;
+  required string age = 6;
+  optional string linkedPostId = 7;
+  optional string path = 8;
+  required int32 likesCount = 9;
+  repeated string likes = 10;
+}
+
+message Feed {
+  required string content = 1;
+  required string userHandle = 2;
+  optional string linkedPostId = 3;
+  optional string path = 4;
+}
+
+message FeedActionRequest {
+  required string id = 1;
+  required string userHandle = 2;
+}
+
+message FriendshipRequest {
+  required string targetHandle = 1;
+  required string userHandle = 2;
+}
+
+message FriendshipResponse {
+  required string targetHandle = 1;
+  required bool isFollowing = 2;
+}
+
+message FeedThreadRequest {
+  required string id = 1;
+  repeated string parentId = 2; 
+}
+
+message FeedThreadResponse {
+  repeated FeedOut replies = 1;
+  repeated FeedOut ancestors = 2; 
+}
+
+message Empty {
+
+}
