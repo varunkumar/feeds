@@ -26,7 +26,8 @@ app.get('/mbp/post', (req, res) => {
 });
 
 app.get('/mbp/getFeeds', (req, res) => {
-  mbpClient.getFeeds({}, respond(req, res));
+  console.log(JSON.parse(req.query.filter));
+  mbpClient.getFeeds(JSON.parse(req.query.filter), respond(req, res));
 });
 
 app.get('/mbp/getFeedThread', (req, res) => {

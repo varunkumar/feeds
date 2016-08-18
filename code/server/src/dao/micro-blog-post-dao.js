@@ -67,7 +67,7 @@ function enrichFeedsWithLikes(rows, callback) {
 function constructQueryFromFilter(filter) {
   let query = 'SELECT *, age(startTime) as age FROM post p';
   if (filter) {
-    if (filter.id) {
+    if (filter.id && filter.id.length >= 1) {
       if (filter.getAllReplies) {
         return `SELECT reply.*, age(reply.startTime) as ago
                   FROM post parent
@@ -83,6 +83,26 @@ function constructQueryFromFilter(filter) {
         const ids = filter.id.join(',').replace(/'/g, '');
         query += ` WHERE id in (${ids})`;
       }
+    } else if (filter.follower) {
+      return `SELECT p.*, age(p.startTime)
+                FROM post p
+              JOIN follower f
+              ON p.userHandle = f.targetHandle
+              WHERE f.userHandle = '${filter.userHandle}'
+              AND p.endTime is NULL
+              AND f.endTime is NULL`;
+    } else if (filter.mention) {
+      return `SELECT p.*, age(p.startTime) 
+                FROM post p
+                JOIN mention m
+                  ON p.id = m.postId
+                WHERE m.userHandle = '${filter.userHandle}'
+                  AND p.endTime is NULL`;
+    } else if (filter.owner) {
+      return `SELECT p.*, age(p.startTime) 
+                FROM post p
+                WHERE p.userHandle = '${filter.userHandle}'
+                  AND p.endTime is NULL`;
     }
   }
   return query;
@@ -90,7 +110,10 @@ function constructQueryFromFilter(filter) {
 
 function getFeeds(filter, callback) {
   if (connection) {
-    connection.query(constructQueryFromFilter(filter), (err, results) => {
+    const query = constructQueryFromFilter(filter);
+    console.log(filter);
+    console.log(query);
+    connection.query(query, (err, results) => {
       if (err) {
         callback(err);
       } else {
