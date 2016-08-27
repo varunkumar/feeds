@@ -1,4 +1,5 @@
-const app = require('express')();
+const express = require('express');
+const app = express();
 const http = require('http').Server(app); // eslint-disable-line
 const io = require('socket.io')(http);
 const mbpClient = require('./client');
@@ -10,6 +11,8 @@ const respond = (req, res) => (err, response) => {
     res.json(response);
   }
 };
+
+app.use(express.static('static'));
 
 app.get('/', (req, res) => {
   res.sendFile(`${__dirname}/index.html`);
