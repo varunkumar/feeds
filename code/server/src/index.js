@@ -25,6 +25,7 @@ app.get('/mbp/post', (req, res) => {
     linkedPostId: req.query.linkedPostId,
     path: req.query.path
   };
+  console.log(feed);
   mbpClient.postFeed(feed, respond(req, res));
 });
 
@@ -79,6 +80,37 @@ app.get('/mbp/isfollowing', (req, res) => {
     userHandle: req.query.userHandle
   };
   mbpClient.isFollowing(friendRequest, respond(req, res));
+});
+
+app.get('/startApp', (req, res) => {
+  const spawn = require('child_process').spawn,
+    grunt = spawn('grunt', ['serve'], {
+      cwd: '/u/nagarajv/projects/reporting-infra/code/frontend'
+    })
+  let port = 3000;
+
+  grunt.stdout.on('data', data => {
+    const match = data.toString().match(/Started connect web server on (.*):(.*)/);
+    if (match) {
+      port = match[2];
+      res.json({
+        success: true,
+        port: port
+      });
+    }
+    console.log(`stdout: ${data}`);
+  });
+
+  grunt.stderr.on('data', data => {
+    console.log(`stderr: ${data}`);
+  });
+
+  grunt.on('close', code => {
+    res.json({
+      success: true,
+      port: port
+    });
+  });
 });
 
 io.on('connection', (socket) => {

@@ -130,6 +130,7 @@ function postFeed(feed, callback) {
     const query =
       `INSERT INTO post(content, userHandle, startTime, linkedPostId, path) values ('${feed.content}', 
 '${feed.userHandle}', current_timestamp(), ${feed.linkedPostId || null}, '${feed.path}') RETURNING *`;
+    console.log(query);
     connection.query(query, (err, results) => {
       if (err) {
         callback(err);
