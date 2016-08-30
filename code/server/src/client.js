@@ -1,9 +1,12 @@
-const PROTO_PATH = `${__dirname}/mbp.proto`;
+const MBP_PROTO_PATH = `${__dirname}/mbp.proto`;
+const VL_PROTO_PATH = `${__dirname}/voicelogs.proto`;
 
 const grpc = require('grpc');
-const mbpProto = grpc.load(PROTO_PATH).microblog;
+const mbpProto = grpc.load(MBP_PROTO_PATH).microblog;
+const vlProto = grpc.load(VL_PROTO_PATH).voiceLog;
 
 const mbpService = new mbpProto.MicroBlogPostService('localhost:50051', grpc.credentials.createInsecure());
+const voiceLogService = new vlProto.VoiceLogService('localhost:50051', grpc.credentials.createInsecure());
 
 const sockets = {};
 
@@ -54,6 +57,10 @@ function unlikeFeed(feedAction, callback) {
   mbpService.unlikeFeed(feedAction, pushToStreamAndRespond(callback, 'feed:like'));
 }
 
+function deleteFeed(feedAction, callback) {
+  mbpService.deleteFeed(feedAction, pushToStreamAndRespond(callback, 'feed:like'));
+}
+
 function follow(friendRequest, callback) {
   mbpService.follow(friendRequest, callback);
 }
@@ -66,6 +73,14 @@ function isFollowing(friendRequest, callback) {
   mbpService.isFollowing(friendRequest, callback);
 }
 
+function getVoiceLogs(voiceLogRequest, callback) {
+  voiceLogService.getVoiceLogs(voiceLogRequest, callback);
+}
+
+function postVoiceLog(voiceLog, callback) {
+  voiceLogService.postVoiceLog(voiceLog, callback);
+}
+
 module.exports = {
   getFeeds,
   getFeedThread,
@@ -74,7 +89,10 @@ module.exports = {
   removeSocket,
   likeFeed,
   unlikeFeed,
+  deleteFeed,
   follow,
   unfollow,
-  isFollowing
+  isFollowing,
+  getVoiceLogs,
+  postVoiceLog
 };

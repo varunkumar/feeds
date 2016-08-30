@@ -64,6 +64,11 @@ function unlikeFeed(call, callback) {
   mbpDao.unlikeFeed(feedAction, callback);
 }
 
+function deleteFeed(call, callback) {
+  const feedAction = call.request;
+  mbpDao.deleteFeed(feedAction, callback);
+}
+
 function follow(call, callback) {
   const request = call.request;
   mbpDao.follow(request, callback);
@@ -86,6 +91,7 @@ module.exports = {
   postFeed,
   likeFeed,
   unlikeFeed,
+  deleteFeed,
   follow,
   unfollow,
   isFollowing

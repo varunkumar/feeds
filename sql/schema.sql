@@ -65,22 +65,20 @@ CREATE TABLE "Plugin" (
   "id" SERIAL NOT NULL,
   "name" STRING(20) NOT NULL,
   "source" STRING(200) NOT NULL,
-  CONSTRAINT "pkPlugin" PRIMARY KEY ("id")
+  CONSTRAINT "pkPlugin" PRIMARY KEY ("name")
 );
 
 CREATE TABLE "VoiceLog" (
   "id" SERIAL NOT NULL,
   "userHandle" STRING(8) NOT NULL,
-  "transcription" STRING(400) NOT NULL,
-  "pluginId" integer NOT NULL,
-  "status" STRING(20) NOT NULL,
-  "response" STRING(1024) NOT NULL,
+  "plugin" STRING(20) NOT NULL,
+  "response" STRING(8000) NOT NULL,
   "timestamp" timestamp NOT NULL,
   CONSTRAINT "pkVoiceLogs" PRIMARY KEY ("id"),
   CONSTRAINT "fkVoiceLogUserHandle" FOREIGN KEY ("userHandle") REFERENCES "User"("handle"),
-  CONSTRAINT "fkVoiceLogPluginId" FOREIGN KEY ("pluginId") REFERENCES "Plugin"("id"),
+  CONSTRAINT "fkVoiceLogPlugin" FOREIGN KEY ("plugin") REFERENCES "Plugin"("name"),
   INDEX("userHandle"),
-  INDEX("pluginId")
+  INDEX("plugin")
 );
 
 ALTER TABLE "Follower" ADD CONSTRAINT "fkFollowerTargetHandle" FOREIGN KEY ("targetHandle") REFERENCES "User"("handle");

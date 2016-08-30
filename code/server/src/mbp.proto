@@ -14,6 +14,7 @@ service MicroBlogPostService {
   rpc PostFeed (Feed) returns (FeedResponse) {}
   rpc LikeFeed (FeedActionRequest) returns (FeedResponse) {}
   rpc UnlikeFeed (FeedActionRequest) returns (FeedResponse) {}
+  rpc DeleteFeed (FeedActionRequest) returns (Empty) {}
   rpc Follow (FriendshipRequest) returns (Empty) {}
   rpc Unfollow (FriendshipRequest) returns (Empty) {}
   rpc IsFollowing (FriendshipRequest) returns (FriendshipResponse) {}

@@ -89,4 +89,16 @@ SELECT *
 # unlike
 DELETE FROM "like" WHERE postId = 168845775817375745 AND userHandle = 'nagarajv'
 
+# plugins
+INSERT INTO Plugin (name, source) values ('core', 'Core');
+INSERT INTO Plugin (name, source) values ('eureka', 'Eureka');
+INSERT INTO Plugin (name, source) values ('food please', 'Food please!');
+INSERT INTO Plugin (name, source) values ('arc platform', 'Arc Platform');
+INSERT INTO Plugin (name, source) values ('wiki', 'Confluence Wiki');
+INSERT INTO Plugin (name, source) values ('commander', 'Commander');
+
+INSERT INTO VoiceLog (userHandle, plugin, response, timestamp) VALUES ('nagarajv', 'core', '[{"subject":"user","utterance":"hi this is a test"},{"subject":"plugin","utterance":{"voice":"Test success","html":"Test success"}}]', current_timestamp);
+
+SELECT * FROM VoiceLog WHERE userHandle = 'nagarajv' LIMIT 10;
+
 http://localhost:3000/mbp/getFeedThread?id=168845914372734977&parentId=[%22168845775817375745%22]

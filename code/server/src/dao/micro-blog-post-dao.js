@@ -1,5 +1,7 @@
 let connection;
 
+const async = require('async');
+
 const connectionUtil = require('./connection-util.js');
 connectionUtil.getConnection((err, con) => {
   connection = con;
@@ -24,7 +26,7 @@ function getLikesForFeeds(postIds, callback) {
   if (connection) {
     connection.query(`SELECT * FROM "like" WHERE postId in (${postIds})`, (err, results) => {
       if (err) {
-        callback(err);
+        callback(new Error(err.error));
       } else {
         const postLikeMap = {};
         results.rows.map(row => {
@@ -54,7 +56,7 @@ function enrichFeedsWithLikes(rows, callback) {
   } else {
     getLikesForFeeds(postIds, (likesErr, likesResults) => {
       if (likesErr) {
-        callback(likesErr);
+        callback(new Error(likesErr.error));
       } else {
         callback(null, {
           feed: rows.map(feedMapper).map(likesMapper(likesResults))
@@ -115,7 +117,7 @@ function getFeeds(filter, callback) {
     console.log(query);
     connection.query(query, (err, results) => {
       if (err) {
-        callback(err);
+        callback(new Error(err.error));
       } else {
         enrichFeedsWithLikes(results.rows, callback);
       }
@@ -125,17 +127,122 @@ function getFeeds(filter, callback) {
   }
 }
 
-function postFeed(feed, callback) {
+function insertMentions(id, content, next) {
+  const mentions = [];
+  const regex = /@(\w+)/g;
+  let match = content.match(regex);
+  while (match) {
+    mentions.push(match[0]);
+    content = content.replace(match[0], ''); // eslint-disable-line
+    match = content.match(regex);
+  }
+  const queries = [];
+  for (let mention of mentions) {
+    mention = mention.substr(1);
+    if (mention.length > 8) {
+      continue;
+    }
+    queries.push(next => { // eslint-disable-line
+      connection.query(`INSERT INTO mention(postId, userHandle) values (${id}, '${mention}')`, next);
+    });
+  }
+  async.series(queries, next);
+}
+
+function insertHashTags(id, content, next) {
+  const hashTags = [];
+  const regex = /#(\w+)/g;
+  let match = content.match(regex);
+  while (match) {
+    hashTags.push(match[0]);
+    content = content.replace(match[0], ''); // eslint-disable-line
+    match = content.match(regex);
+  }
+  const queries = [];
+  for (let hashTag of hashTags) {
+    hashTag = hashTag.substr(1);
+    queries.push(next => { // eslint-disable-line
+      connection.query(`INSERT INTO hashTag(postId, hashTag) values (${id}, '${hashTag}')`, next);
+    });
+  }
+  async.series(queries, next);
+}
+
+// Wrapper for a transaction.
+// This automatically re-calls "op" with the client as an argument as
+// long as the database server asks for the transaction to be retried.
+function txnWrapper(op, next) {
+  connection.query('BEGIN; SAVEPOINT cockroach_restart', err => {
+    if (err) {
+      return next(err);
+    }
+
+    let released = false;
+    async.doWhilst(done => {
+        const handleError = (iterateeErr) => {
+          // If we got an error, see if it's a retryable one and, if so, restart.
+          if (iterateeErr.code === '40001') {
+            // Signal the database that we'll retry.
+            return connection.query('ROLLBACK TO SAVEPOINT cockroach_restart', done);
+          }
+          // A non-retryable error; break out of the doWhilst with an error.
+          return done(iterateeErr);
+        };
+
+        // Attempt the work.
+        console.log('Attempt the work...');
+        op(connection, (actualErr) => { // eslint-disable-line
+          if (actualErr) {
+            console.log(actualErr);
+            return handleError(actualErr);
+          }
+
+          console.log('here...');
+
+          // If we reach this point, release and commit.
+          connection.query('RELEASE SAVEPOINT cockroach_restart', (commitErr) => {
+            if (commitErr) {
+              return handleError(commitErr);
+            }
+            released = true;
+            return done();
+          });
+        });
+      },
+      () => !released,
+      (finalCallbackErr) => {
+        if (finalCallbackErr) {
+          connection.query('ROLLBACK', () => {
+            console.log(finalCallbackErr);
+            next(new Error(finalCallbackErr.error));
+          });
+        } else {
+          connection.query('COMMIT', next);
+        }
+      });
+  });
+}
+
+function insertFeed(feed, callback) {
   if (connection) {
     const query =
       `INSERT INTO post(content, userHandle, startTime, linkedPostId, path) values ('${feed.content}', 
 '${feed.userHandle}', current_timestamp(), ${feed.linkedPostId || null}, '${feed.path}') RETURNING *`;
     console.log(query);
     connection.query(query, (err, results) => {
+      console.log(err, results);
       if (err) {
-        callback(err);
+        callback(new Error(err.error));
       } else {
-        callback(null, results.rows.map(feedMapper));
+        console.log('Executing async...');
+        async.series([next => {
+          console.log('inserting mentions...');
+          insertMentions(results.rows[0].id, feed.content, next);
+        }, next => {
+          console.log('inserting hashtags...');
+          insertHashTags(results.rows[0].id, feed.content, next);
+        }], callback);
+        console.log('Here...');
       }
     });
   } else {
@@ -143,8 +250,16 @@ function postFeed(feed, callback) {
   }
 }
 
-function removeFeed() {
-
+function postFeed(feed, callback) {
+  txnWrapper((client, next) => {
+    insertFeed(feed, next);
+  }, (err, results) => {
+    if (err) {
+      callback(err);
+    } else {
+      callback(null, results.rows.map(feedMapper));
+    }
+  });
 }
 
 function likeFeed(feedAction, callback) {
@@ -154,7 +269,7 @@ function likeFeed(feedAction, callback) {
 current_timestamp())`;
     connection.query(query, (err) => {
       if (err) {
-        callback(err);
+        callback(new Error(err.error));
       } else {
         getFeeds({
           id: [feedAction.id]
@@ -172,11 +287,28 @@ function unlikeFeed(feedAction, callback) {
       `DELETE FROM "like" WHERE postId = ${feedAction.id} AND userHandle = '${feedAction.userHandle}'`;
     connection.query(query, (err) => {
       if (err) {
-        callback(err);
+        callback(new Error(err.error));
       } else {
         getFeeds({
           id: [feedAction.id]
         }, callback);
+      }
+    });
+  } else {
+    callback(new Error('Unable to connect to cockroach db'));
+  }
+}
+
+function deleteFeed(feedAction, callback) {
+  if (connection) {
+    const query =
+      `UPDATE "post" SET endTime = current_timestamp() WHERE id=${feedAction.id} AND userHandle='${feedAction.userHandle}'`; //eslint-disable-line
+    console.log(query);
+    connection.query(query, (err) => {
+      if (err) {
+        callback(new Error(err.error));
+      } else {
+        callback(null, {});
       }
     });
   } else {
@@ -190,7 +322,7 @@ function follow(request, callback) {
       `INSERT INTO follower(targetHandle, userHandle, startTime, endTime) values (
 '${request.targetHandle}', '${request.userHandle}', current_timestamp(), null);`,
       (err) => {
-        callback(err);
+        callback(new Error(err.error));
       });
   } else {
     callback(new Error('Unable to connect to cockroach db'));
@@ -203,7 +335,7 @@ function unfollow(request, callback) {
       `UPDATE follower SET endTime = current_timestamp() 
 WHERE targetHandle = '${request.targetHandle}' AND userHandle = '${request.userHandle}'; AND endTime IS NULL`,
       (err) => {
-        callback(err);
+        callback(new Error(err.error));
       });
   } else {
     callback(new Error('Unable to connect to cockroach db'));
@@ -217,7 +349,7 @@ function isFollowing(request, callback) {
 WHERE targetHandle = '${request.targetHandle}' AND userHandle = '${request.userHandle}' AND endTime IS NULL`,
       (err, results) => {
         if (err) {
-          callback(err);
+          callback(new Error(err.error));
         } else {
           callback(null, {
             targetHandle: request.targetHandle,
@@ -233,9 +365,9 @@ WHERE targetHandle = '${request.targetHandle}' AND userHandle = '${request.userH
 module.exports = {
   getFeeds,
   postFeed,
-  removeFeed,
   likeFeed,
   unlikeFeed,
+  deleteFeed,
   follow,
   unfollow,
   isFollowing

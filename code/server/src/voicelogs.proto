@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.arcesium.halo";
+option java_outer_classname = "VoiceLogProto";
+option objc_class_prefix = "VoiceLog";
+
+package voiceLog;
+
+service VoiceLogService {
+  rpc PostVoiceLog (VoiceLog) returns (Empty) {}
+  rpc GetVoiceLogs (VoiceLogRequest) returns (VoiceLogResponse) {}
+}
+
+message VoiceLogResponse {
+  repeated VoiceLogOut voiceLog = 1;
+}
+
+message VoiceLogOut {
+  required string id = 1;
+  required string userHandle = 2;
+  required string timestamp = 3;
+  required string response = 4;
+  required string plugin = 5;
+}
+
+message VoiceLog {
+  required string userHandle = 1;
+  required string plugin = 2;
+  required string response = 3;
+}
+
+message VoiceLogRequest {
+  required string userHandle = 1;
+}
+
+message Empty {
+
+}

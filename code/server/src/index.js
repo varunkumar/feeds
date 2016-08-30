@@ -58,6 +58,14 @@ app.get('/mbp/unlikeFeed', (req, res) => {
   mbpClient.unlikeFeed(feedAction, respond(req, res));
 });
 
+app.get('/mbp/deleteFeed', (req, res) => {
+  const feedAction = {
+    id: req.query.id,
+    userHandle: req.query.userHandle
+  };
+  mbpClient.deleteFeed(feedAction, respond(req, res));
+});
+
 app.get('/mbp/follow', (req, res) => {
   const friendRequest = {
     targetHandle: req.query.targetHandle,
@@ -111,6 +119,22 @@ app.get('/startApp', (req, res) => {
       port: port
     });
   });
+});
+
+app.get('/vl/post', (req, res) => {
+  const voiceLog = {
+    userHandle: req.query.userHandle,
+    plugin: req.query.plugin,
+    response: req.query.response
+  };
+  console.log(voiceLog);
+  mbpClient.postVoiceLog(voiceLog, respond(req, res));
+});
+
+app.get('/vl/getVoiceLogs', (req, res) => {
+  mbpClient.getVoiceLogs({
+    userHandle: req.query.userHandle
+  }, respond(req, res));
 });
 
 io.on('connection', (socket) => {
